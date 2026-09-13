@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: evaluation-service
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/evaluation-service:v1.0.0-init
+          image: 678054141550.dkr.ecr.us-east-1.amazonaws.com/evaluation-service:v1.0.0-42c165d
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
