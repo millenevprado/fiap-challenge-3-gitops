@@ -1,0 +1,4 @@
+# Never commit filled-in secret manifests or local overrides
+*.local.yaml
+*.secrets.yaml
+.env
