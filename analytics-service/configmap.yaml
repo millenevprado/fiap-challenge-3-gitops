@@ -10,6 +10,4 @@ data:
   PORT: "8005"
   AWS_REGION: "us-east-1"
   AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
-  # CHANGEME: queue_url output from the `sqs` Terraform module (same queue
-  # the evaluation-service publishes to).
-  AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/CHANGEME/togglemaster-evaluation-events"
+  AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/678054141550/togglemaster-evaluation-events"

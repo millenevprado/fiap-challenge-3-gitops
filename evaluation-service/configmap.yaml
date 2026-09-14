@@ -10,9 +10,6 @@ data:
   PORT: "8004"
   FLAG_SERVICE_URL: "http://flag-service:8002"
   TARGETING_SERVICE_URL: "http://targeting-service:8003"
-  # CHANGEME: ElastiCache (Redis) primary endpoint from the `elasticache`
-  # Terraform module output, e.g. "redis://togglemaster-redis.xxxxxx.use1.cache.amazonaws.com:6379"
-  REDIS_URL: "redis://CHANGEME-elasticache-endpoint:6379"
+  REDIS_URL: "redis://togglemaster-redis.7bfgja.0001.use1.cache.amazonaws.com:6379"
   AWS_REGION: "us-east-1"
-  # CHANGEME: queue_url output from the `sqs` Terraform module.
-  AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/CHANGEME/togglemaster-evaluation-events"
+  AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/678054141550/togglemaster-evaluation-events"
