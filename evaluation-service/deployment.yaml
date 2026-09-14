@@ -28,6 +28,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: evaluation-service-config
+            - secretRef:
+                name: evaluation-service-secrets
           resources:
             requests:
               cpu: 100m
