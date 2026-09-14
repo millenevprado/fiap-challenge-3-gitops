@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: analytics-service
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/analytics-service:v1.0.0-init
+          image: 678054141550.dkr.ecr.us-east-1.amazonaws.com/analytics-service:v1.0.0-777ea98
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
