@@ -22,7 +22,7 @@ spec:
           # <AWS_ACCOUNT_ID> is replaced once with the real ECR registry URI
           # (see the `ecr` module's repository_urls output). The CI pipeline
           # only ever rewrites the tag after the colon on subsequent deploys.
-          image: 678054141550.dkr.ecr.us-east-1.amazonaws.com/auth-service:v1.0.0-b6b8545
+          image: 678054141550.dkr.ecr.us-east-1.amazonaws.com/auth-service:v1.0.0-4d72d64
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
