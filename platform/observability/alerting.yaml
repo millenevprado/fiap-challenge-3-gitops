@@ -1,0 +1,122 @@
+# Grafana Alerting provisioned as code (loaded by the Grafana sidecar from
+# ConfigMaps labelled grafana_alert).
+#
+#   rule "auth-service 5xx > 5%"  ──>  contact point "togglemaster-oncall"
+#                                        ├─ PagerDuty (opens the incident)
+#                                        └─ Slack     (detailed ChatOps message)
+#
+# ${VAR} values are injected from the "grafana-alerting" Secret
+# (ExternalSecret -> AWS Secrets Manager). Avoid a literal "$" in templates:
+# Grafana interpolates env vars in provisioning files.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alerting-togglemaster
+  namespace: observability
+  labels:
+    grafana_alert: "1"
+data:
+  togglemaster-alerting.yaml: |
+    apiVersion: 1
+
+    templates:
+      - orgId: 1
+        name: togglemaster
+        template: |
+          {{ define "togglemaster.title" -}}
+          [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
+          {{- end }}
+
+          {{ define "togglemaster.text" -}}
+          {{ range .Alerts -}}
+          {{ if eq .Status "firing" }}:rotating_light:{{ else }}:large_green_circle:{{ end }} *{{ .Annotations.summary }}*
+          *Serviço:* `{{ .Labels.service }}`  |  *Severidade:* {{ .Labels.severity }}  |  *Namespace:* {{ .Labels.namespace }}
+          *Valor atual:* {{ .Annotations.current_value }}
+          *Descrição:* {{ .Annotations.description }}
+          *Início:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+          *Incidente:* aberto no PagerDuty
+          *Runbook:* {{ .Annotations.runbook_url }}
+          *Dashboard:* {{ .Annotations.dashboard_url }}
+          {{ end -}}
+          {{- end }}
+
+    contactPoints:
+      - orgId: 1
+        name: togglemaster-oncall
+        receivers:
+          - uid: togglemaster-pagerduty
+            type: pagerduty
+            settings:
+              integrationKey: ${PAGERDUTY_ROUTING_KEY}
+              severity: critical
+              class: http-5xx
+              component: '{{ .CommonLabels.service }}'
+              group: togglemaster
+              summary: '{{ template "togglemaster.title" . }}'
+          - uid: togglemaster-slack
+            type: slack
+            settings:
+              url: ${SLACK_WEBHOOK_URL}
+              title: '{{ template "togglemaster.title" . }}'
+              text: '{{ template "togglemaster.text" . }}'
+
+    policies:
+      - orgId: 1
+        receiver: togglemaster-oncall
+        group_by: ["grafana_folder", "alertname"]
+        group_wait: 10s
+        group_interval: 1m
+        # Avoid alert fatigue: one reminder every 4h while still firing.
+        repeat_interval: 4h
+
+    groups:
+      - orgId: 1
+        name: togglemaster-slo
+        folder: ToggleMaster
+        interval: 30s
+        rules:
+          - uid: auth-service-5xx-rate
+            title: auth-service HTTP 5xx rate > 5%
+            condition: C
+            for: 1m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: critical
+              service: auth-service
+              namespace: togglemaster
+              deployment: auth-service
+            annotations:
+              summary: auth-service com taxa de erros HTTP 5xx acima de 5%
+              description: >-
+                Mais de 5% das requisições do auth-service retornaram 5xx no
+                último minuto. Como flag-service e targeting-service validam
+                todas as chaves de API no auth-service, o impacto se propaga
+                para o evaluation-service.
+              current_value: '{{ printf "%.1f" .Values.A.Value }}% de respostas 5xx'
+              runbook_url: https://github.com/millenevprado/fiap-challenge-3-gitops/blob/master/platform/RUNBOOK.md
+              dashboard_url: http://localhost:3000/d/togglemaster-health
+            data:
+              - refId: A
+                datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: |
+                    100 *
+                    (sum(rate(http_server_request_duration_seconds_count{service_name="auth-service", http_response_status_code=~"5.."}[1m])) or vector(0))
+                    /
+                    sum(rate(http_server_request_duration_seconds_count{service_name="auth-service"}[1m]))
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [5]

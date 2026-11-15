@@ -14,3 +14,4 @@ data:
   OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
   OTEL_RESOURCE_ATTRIBUTES: "service.namespace=togglemaster,deployment.environment.name=fiap"
   OTEL_METRIC_EXPORT_INTERVAL: "15000"
+  FAULT_INJECTION_ENABLED: "true"
