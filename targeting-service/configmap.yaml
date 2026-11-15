@@ -9,3 +9,15 @@ metadata:
 data:
   PORT: "8003"
   AUTH_SERVICE_URL: "http://auth-service:8001"
+  # OpenTelemetry: traces/metrics go to the node-local OTel Collector
+  OTEL_SERVICE_NAME: "targeting-service"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=togglemaster,deployment.environment.name=fiap"
+  OTEL_METRIC_EXPORT_INTERVAL: "15000"
+  OTEL_TRACES_EXPORTER: "otlp"
+  OTEL_METRICS_EXPORTER: "otlp"
+  OTEL_LOGS_EXPORTER: "none"
+  OTEL_SEMCONV_STABILITY_OPT_IN: "http"
+  OTEL_PYTHON_LOG_CORRELATION: "true"
+  OTEL_PYTHON_EXCLUDED_URLS: "health"

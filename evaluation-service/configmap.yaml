@@ -13,3 +13,11 @@ data:
   REDIS_URL: "redis://togglemaster-redis.s1wfqo.0001.use2.cache.amazonaws.com:6379"
   AWS_REGION: "us-east-2"
   AWS_SQS_URL: "https://sqs.us-east-2.amazonaws.com/191667534491/togglemaster-evaluation-events"
+  AWS_REGION: "us-east-2"
+  AWS_SQS_URL: "https://sqs.us-east-2.amazonaws.com/191667534491/togglemaster-evaluation-events"
+  # OpenTelemetry: traces/metrics go to the node-local OTel Collector
+  OTEL_SERVICE_NAME: "evaluation-service"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=togglemaster,deployment.environment.name=fiap"
+  OTEL_METRIC_EXPORT_INTERVAL: "15000"
