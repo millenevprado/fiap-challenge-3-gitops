@@ -1,5 +1,7 @@
 # Plain manifests for the observability stack (platform/observability):
-# the custom Grafana dashboard, provisioned as code.
+# ExternalSecrets (credentials from AWS Secrets Manager) and the custom
+# Grafana dashboard, provisioned as code.
+# Wave -1: secrets must exist before the Collector starts.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

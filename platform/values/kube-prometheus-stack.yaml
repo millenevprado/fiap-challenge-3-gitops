@@ -20,6 +20,9 @@ alertmanager:
 
 prometheus:
   prometheusSpec:
+    # The OTel Collector pushes application metrics here
+    # (prometheusremotewrite exporter -> /api/v1/write).
+    enableRemoteWriteReceiver: true
     retention: 3d
     # Pick up ServiceMonitors/PodMonitors from any release/namespace.
     serviceMonitorSelectorNilUsesHelmValues: false
@@ -33,12 +36,13 @@ prometheus:
         memory: 1536Mi
 
 grafana:
-  # The chart generates the admin password into the "kps-grafana" Secret:
-  #   kubectl -n observability get secret kps-grafana \
+  # The chart generates the admin password into the
+  # "kube-prometheus-stack-grafana" Secret:
+  #   kubectl -n observability get secret kube-prometheus-stack-grafana \
   #     -o jsonpath='{.data.admin-password}' | base64 -d
   grafana.ini:
     server:
-      # Access via `kubectl -n observability port-forward svc/kps-grafana 3000:80`.
+      # Access via `kubectl -n observability port-forward svc/kube-prometheus-stack-grafana 3000:80`.
       root_url: http://localhost:3000
 
   persistence:

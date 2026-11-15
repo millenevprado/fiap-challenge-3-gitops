@@ -1,11 +1,14 @@
-# OpenTelemetry Collector (DaemonSet, one per node).
+# OpenTelemetry Collector: the single entry point for telemetry.
 #
-# Stage 1: only ships container logs to Loki.
+#   apps (OTel SDK, OTLP/HTTP :4318) ─┐
+#   container logs (filelog)  ────────┼─> Collector ─┬─> Prometheus (metrics, remote write)
+#                                     │              ├─> Loki       (logs, OTLP)
+#                                     │              └─> New Relic  (traces + metrics, OTLP)
 #
-#   container logs (/var/log/pods, filelog) -> Collector -> Loki (OTLP)
-#
-# Later stages add the OTLP pipelines for app traces/metrics
-# (Prometheus + APM), making the Collector the single telemetry router.
+# DaemonSet: one collector per node. The Service uses
+# internalTrafficPolicy=Local, so a pod always talks to the collector on its
+# own node (no cross-node hop, and the k8sattributes processor sees the
+# real pod IP to enrich telemetry with pod/namespace/deployment metadata).
 mode: daemonset
 fullnameOverride: otel-collector
 
@@ -21,6 +24,11 @@ presets:
   kubernetesAttributes:
     enabled: true
 
+# Apps send OTLP to http://otel-collector.observability.svc.cluster.local:4318
+service:
+  enabled: true
+  internalTrafficPolicy: Local
+
 ports:
   jaeger-compact:
     enabled: false
@@ -30,6 +38,11 @@ ports:
     enabled: false
   zipkin:
     enabled: false
+
+# New Relic credentials from AWS Secrets Manager (ExternalSecret).
+extraEnvsFrom:
+  - secretRef:
+      name: otel-collector-newrelic
 
 resources:
   requests:
@@ -59,14 +72,36 @@ config:
         - context: resource
           statements:
             - set(attributes["service.name"], attributes["k8s.container.name"]) where attributes["service.name"] == nil
+    # Health checks are noise in APM.
+    filter/health:
+      error_mode: ignore
+      traces:
+        span:
+          - attributes["url.path"] == "/health"
+          - attributes["http.target"] == "/health"
   exporters:
+    otlphttp/newrelic:
+      endpoint: ${env:NEW_RELIC_OTLP_ENDPOINT}
+      headers:
+        api-key: ${env:NEW_RELIC_LICENSE_KEY}
+      compression: gzip
+    prometheusremotewrite:
+      endpoint: http://kps-prometheus.observability.svc.cluster.local:9090/api/v1/write
+      # service.name -> label service_name, k8s.pod.name -> k8s_pod_name...
+      resource_to_telemetry_conversion:
+        enabled: true
     otlphttp/loki:
       endpoint: http://loki.observability.svc.cluster.local:3100/otlp
   service:
     pipelines:
-      # Not used yet (no app instrumentation in this stage).
-      traces: null
-      metrics: null
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, filter/health, resource/cluster, batch]
+        exporters: [otlphttp/newrelic]
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, resource/cluster, batch]
+        exporters: [prometheusremotewrite, otlphttp/newrelic]
       logs:
         receivers: [otlp]
         processors: [memory_limiter, resource/cluster, transform/logs-service-name, batch]
