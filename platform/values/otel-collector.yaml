@@ -1,0 +1,73 @@
+# OpenTelemetry Collector (DaemonSet, one per node).
+#
+# Stage 1: only ships container logs to Loki.
+#
+#   container logs (/var/log/pods, filelog) -> Collector -> Loki (OTLP)
+#
+# Later stages add the OTLP pipelines for app traces/metrics
+# (Prometheus + APM), making the Collector the single telemetry router.
+mode: daemonset
+fullnameOverride: otel-collector
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+presets:
+  # filelog receiver reading /var/log/pods/* on each node (all containers).
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+  # k8sattributes processor (+ RBAC): adds k8s.pod.name, k8s.deployment.name...
+  kubernetesAttributes:
+    enabled: true
+
+ports:
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+config:
+  receivers:
+    jaeger: null
+    zipkin: null
+  processors:
+    resource/cluster:
+      attributes:
+        - key: k8s.cluster.name
+          value: togglemaster-eks
+          action: upsert
+        - key: deployment.environment.name
+          value: fiap
+          action: upsert
+    # Container logs have no service.name: derive it from the container name
+    # so Loki indexes them as service_name="auth-service", etc.
+    transform/logs-service-name:
+      error_mode: ignore
+      log_statements:
+        - context: resource
+          statements:
+            - set(attributes["service.name"], attributes["k8s.container.name"]) where attributes["service.name"] == nil
+  exporters:
+    otlphttp/loki:
+      endpoint: http://loki.observability.svc.cluster.local:3100/otlp
+  service:
+    pipelines:
+      # Not used yet (no app instrumentation in this stage).
+      traces: null
+      metrics: null
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, resource/cluster, transform/logs-service-name, batch]
+        exporters: [otlphttp/loki]

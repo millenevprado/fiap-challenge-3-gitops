@@ -1,0 +1,72 @@
+# kube-prometheus-stack: Prometheus (metrics), Grafana (visualization),
+# kube-state-metrics and node-exporter (cluster resource usage).
+fullnameOverride: kps
+
+crds:
+  enabled: true
+
+# EKS manages the control plane: these targets are not scrapeable.
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+
+# Alerting will be done by Grafana Alerting (PagerDuty/Slack), so
+# Alertmanager is not deployed.
+alertmanager:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 3d
+    # Pick up ServiceMonitors/PodMonitors from any release/namespace.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1536Mi
+
+grafana:
+  # The chart generates the admin password into the "kps-grafana" Secret:
+  #   kubectl -n observability get secret kps-grafana \
+  #     -o jsonpath='{.data.admin-password}' | base64 -d
+  grafana.ini:
+    server:
+      # Access via `kubectl -n observability port-forward svc/kps-grafana 3000:80`.
+      root_url: http://localhost:3000
+
+  persistence:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+  sidecar:
+    # Dashboards provisioned as code from ConfigMaps labelled
+    # grafana_dashboard (platform/observability).
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.observability.svc.cluster.local:3100
+      jsonData:
+        maxLines: 1000
