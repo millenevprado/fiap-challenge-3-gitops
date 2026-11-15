@@ -20,7 +20,7 @@ spec:
       serviceAccountName: analytics-service
       containers:
         - name: analytics-service
-          image: 191667534491.dkr.ecr.us-east-2.amazonaws.com/analytics-service:v1.0.0-8029c0e
+          image: 191667534491.dkr.ecr.us-east-2.amazonaws.com/analytics-service:v1.0.0-34ef235
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
