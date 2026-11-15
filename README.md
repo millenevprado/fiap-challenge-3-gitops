@@ -28,13 +28,13 @@ evaluation-service/
   service.yaml
   configmap.yaml
   secret.yaml                # ExternalSecret (SERVICE_API_KEY)
-  serviceaccount.yaml         # anotada com IAM role (IRSA)
+  serviceaccount.yaml        # ligada a uma IAM role (EKS Pod Identity)
 analytics-service/
   deployment.yaml
   service.yaml
   configmap.yaml
-  serviceaccount.yaml         # anotada com IAM role (IRSA) — sem secret.yaml,
-                               # não precisa de credencial nenhuma
+  serviceaccount.yaml         # ligada a uma IAM role (EKS Pod Identity), sem secret.yaml,
+                              # não precisa de credencial nenhuma
 ```
 
 Cada pasta de serviço é autocontida — vira uma `Application` independente do
@@ -56,13 +56,14 @@ comum no cluster:
 | flag-service        | `DATABASE_URL` (credenciais reais do RDS)               |
 | targeting-service   | `DATABASE_URL` (credenciais reais do RDS)               |
 | evaluation-service  | `SERVICE_API_KEY` (chave interna pra chamar flag/targeting-service) |
-| analytics-service   | nenhum — acessa SQS/DynamoDB via IRSA, sem credencial   |
+| analytics-service   | nenhum — acessa SQS/DynamoDB via EKS Pod Identity, sem credencial   |
 
 `evaluation-service` e `analytics-service` também têm um `serviceaccount.yaml`
-anotado com `eks.amazonaws.com/role-arn`: é **IRSA** (IAM Roles for Service
-Accounts) — o pod assume a role do IAM automaticamente pelo seu token
-projetado, então a AWS SDK (SQS/DynamoDB) nunca precisa de
-`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` estático.
+próprio: o Terraform associa cada um a uma role do IAM via **EKS Pod
+Identity** (`aws_eks_pod_identity_association`). O pod recebe as credenciais
+do agente `eks-pod-identity-agent`, então a AWS SDK (SQS/DynamoDB) nunca
+precisa de `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` estático, e o
+ServiceAccount não precisa de anotação.
 
 ## Mapeamento de portas e dependências
 

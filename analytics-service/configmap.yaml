@@ -8,6 +8,6 @@ metadata:
     app.kubernetes.io/part-of: togglemaster
 data:
   PORT: "8005"
-  AWS_REGION: "us-east-1"
+  AWS_REGION: "us-east-2"
   AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
-  AWS_SQS_URL: "https://sqs.us-east-1.amazonaws.com/678054141550/togglemaster-evaluation-events"
+  AWS_SQS_URL: "https://sqs.us-east-2.amazonaws.com/191667534491/togglemaster-evaluation-events"
