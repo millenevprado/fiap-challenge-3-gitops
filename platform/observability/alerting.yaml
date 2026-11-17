@@ -3,7 +3,9 @@
 #
 #   rule "auth-service 5xx > 5%"  ──>  contact point "togglemaster-oncall"
 #                                        ├─ PagerDuty (opens the incident)
-#                                        └─ Slack     (detailed ChatOps message)
+#                                        ├─ Slack     (detailed ChatOps message)
+#                                        └─ Webhook   (self-healing Lambda:
+#                                                      rollout restart)
 #
 # ${VAR} values are injected from the "grafana-alerting" Secret
 # (ExternalSecret -> AWS Secrets Manager). Avoid a literal "$" in templates:
@@ -34,6 +36,7 @@ data:
           *Valor atual:* {{ .Annotations.current_value }}
           *Descrição:* {{ .Annotations.description }}
           *Início:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+          {{ if eq .Labels.selfheal "true" }}*Self-healing:* runbook automático acionado (AWS Lambda -> `kubectl rollout restart deployment/{{ .Labels.deployment }}`){{ end }}
           *Incidente:* aberto no PagerDuty
           *Runbook:* {{ .Annotations.runbook_url }}
           *Dashboard:* {{ .Annotations.dashboard_url }}
@@ -59,6 +62,14 @@ data:
               url: ${SLACK_WEBHOOK_URL}
               title: '{{ template "togglemaster.title" . }}'
               text: '{{ template "togglemaster.text" . }}'
+          - uid: togglemaster-selfheal
+            type: webhook
+            settings:
+              url: ${SELFHEAL_URL}
+              httpMethod: POST
+              authorization_scheme: Bearer
+              authorization_credentials: ${SELFHEAL_TOKEN}
+            disableResolveMessage: true
 
     policies:
       - orgId: 1
@@ -86,6 +97,7 @@ data:
               service: auth-service
               namespace: togglemaster
               deployment: auth-service
+              selfheal: "true"
             annotations:
               summary: auth-service com taxa de erros HTTP 5xx acima de 5%
               description: >-
